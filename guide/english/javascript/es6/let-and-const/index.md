@@ -28,6 +28,19 @@ if (true) {
 console.log(c); // 10
 console.log(a); // 50
 ```
+Differences to var
+
+Hoisting
+Unlike variables declared with var, which will start with the value undefined, let variables are not initialized until their definition is evaluated
+
+```
+function do_something() {
+  console.log(bar); // undefined
+  console.log(foo); // ReferenceError
+  var bar = 1;
+  let foo = 2;
+}
+```
 
 ## Const
 
