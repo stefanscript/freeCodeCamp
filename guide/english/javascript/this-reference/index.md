@@ -57,6 +57,11 @@ Here's a quick example of how each one is used to bind `this`:
 - `.apply()`: `fn.apply(thisObj, [fnParam1, fnParam2])`
 - `.bind()`: `const newFn = fn.bind(thisObj, fnParam1, fnParam2)`
 
+Tip:
+An easy way to remember when to use apply and call:
+- `.apply()` - use the first letter `a` for array separated params
+- `.call()` - use the first letter `c` for comma separated params
+
 ### Rule 4
 
 ```javascript
