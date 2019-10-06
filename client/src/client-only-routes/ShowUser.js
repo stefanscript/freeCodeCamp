@@ -1,7 +1,7 @@
-import React, { Component } from 'react';
+import React, { Component, Fragment } from 'react';
 import PropTypes from 'prop-types';
 import { bindActionCreators } from 'redux';
-import { Link, navigate } from 'gatsby';
+import { navigate } from '@reach/router';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 import {
@@ -14,22 +14,24 @@ import {
 } from '@freecodecamp/react-bootstrap';
 import Helmet from 'react-helmet';
 
+import { apiLocation } from '../../config/env.json';
+
 import {
   isSignedInSelector,
   userFetchStateSelector,
   userSelector,
   reportUser
 } from '../redux';
-import Layout from '../components/layouts/Default';
 import { Spacer, Loader, FullWidthRow } from '../components/helpers';
 
 const propTypes = {
   email: PropTypes.string,
   isSignedIn: PropTypes.bool,
+  navigate: PropTypes.func.isRequired,
   reportUser: PropTypes.func.isRequired,
   userFetchState: PropTypes.shape({
     pending: PropTypes.bool,
-    comnplete: PropTypes.bool,
+    complete: PropTypes.bool,
     errored: PropTypes.bool
   }),
   username: PropTypes.string
@@ -47,7 +49,13 @@ const mapStateToProps = createSelector(
 );
 
 const mapDispatchToProps = dispatch =>
-  bindActionCreators({ reportUser }, dispatch);
+  bindActionCreators(
+    {
+      navigate,
+      reportUser
+    },
+    dispatch
+  );
 
 class ShowUser extends Component {
   constructor(props) {
@@ -80,9 +88,10 @@ class ShowUser extends Component {
     const { username, reportUser } = this.props;
     return reportUser({ username, reportDescription });
   }
-  setNavigationTimer() {
+
+  setNavigationTimer(navigate) {
     if (!this.timer) {
-      this.timer = setTimeout(() => navigate('/signin'), 5000);
+      this.timer = setTimeout(() => navigate(`${apiLocation}/signin`), 5000);
     }
   }
 
@@ -90,59 +99,57 @@ class ShowUser extends Component {
     const { username, isSignedIn, userFetchState, email } = this.props;
     const { pending, complete, errored } = userFetchState;
     if (pending && !complete) {
-      return (
-        <Layout>
-          <div className='loader-wrapper'>
-            <Loader />
-          </div>
-        </Layout>
-      );
+      return <Loader fullScreen={true} />;
     }
 
     if ((complete || errored) && !isSignedIn) {
-      this.setNavigationTimer();
+      const { navigate } = this.props;
+      this.setNavigationTimer(navigate);
       return (
-        <Layout>
-          <main>
-            <FullWidthRow>
-              <Spacer />
-              <Spacer />
-              <Panel bsStyle='info'>
-                <Panel.Heading>
-                  <Panel.Title componentClass='h3'>
-                    You need to be signed in to report a user
-                  </Panel.Title>
-                </Panel.Heading>
-                <Panel.Body className='text-center'>
-                  <Spacer />
-                  <p>
-                    You will be redirected to sign in to freeCodeCamp.org
-                    automatically in 5 seconds
-                  </p>
-                  <p>
-                    <Link to='/signin'>
-                      Or you can here if you do not want to wait
-                    </Link>
-                  </p>
-                  <Spacer />
-                </Panel.Body>
-              </Panel>
-            </FullWidthRow>
-          </main>
-        </Layout>
+        <main>
+          <FullWidthRow>
+            <Spacer size={2} />
+            <Panel bsStyle='info'>
+              <Panel.Heading>
+                <Panel.Title componentClass='h3'>
+                  You need to be signed in to report a user
+                </Panel.Title>
+              </Panel.Heading>
+              <Panel.Body className='text-center'>
+                <Spacer />
+                <p>
+                  You will be redirected to sign in to freeCodeCamp.org
+                  automatically in 5 seconds
+                </p>
+                <p>
+                  <Button
+                    bsStyle='default'
+                    href='/signin'
+                    onClick={e => {
+                      e.preventDefault();
+                      return navigate(`${apiLocation}/signin`);
+                    }}
+                  >
+                    Or click here if you do not want to wait
+                  </Button>
+                </p>
+                <Spacer />
+              </Panel.Body>
+            </Panel>
+          </FullWidthRow>
+        </main>
       );
     }
 
     const { textarea } = this.state;
 
     return (
-      <Layout>
+      <Fragment>
         <Helmet>
           <title>Report a users profile | freeCodeCamp.org</title>
         </Helmet>
         <FullWidthRow>
-          <Spacer />
-          <Spacer />
+          <Spacer size={2} />
           <Col md={8} mdOffset={2}>
             <h2>
               Do you want to report {username}
@@ -170,7 +177,7 @@ class ShowUser extends Component {
             </form>
           </Col>
         </FullWidthRow>
-      </Layout>
+      </Fragment>
     );
   }
 }

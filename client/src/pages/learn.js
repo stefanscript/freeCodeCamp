@@ -1,9 +1,23 @@
-/* eslint-disable max-len */
 import React from 'react';
+import { Grid, Row, Col } from '@freecodecamp/react-bootstrap';
 import PropTypes from 'prop-types';
-import { Link, graphql } from 'gatsby';
+import { createSelector } from 'reselect';
+import { graphql } from 'gatsby';
 import Helmet from 'react-helmet';
 import { connect } from 'react-redux';
+
+import {
+  userFetchStateSelector,
+  isSignedInSelector,
+  userSelector
+} from '../redux';
+
+import LearnLayout from '../components/layouts/Learn';
+import Login from '../components/Header/components/Login';
+import { Link, Spacer, Loader } from '../components/helpers';
+import Map from '../components/Map';
+import Welcome from '../components/welcome';
+import { dasherize } from '../../../utils/slugs';
 
 import {
   ChallengeNode,
@@ -11,23 +25,65 @@ import {
   AllMarkdownRemark
 } from '../redux/propTypes';
 
-import LearnLayout from '../components/layouts/Learn';
-import Spacer from '../components/helpers/Spacer';
-import Map from '../components/Map';
-
-import './learn.css';
-
-const mapStateToProps = () => ({});
+const mapStateToProps = createSelector(
+  userFetchStateSelector,
+  isSignedInSelector,
+  userSelector,
+  (fetchState, isSignedIn, user) => ({
+    fetchState,
+    isSignedIn,
+    user
+  })
+);
 
 const propTypes = {
   data: PropTypes.shape({
     challengeNode: ChallengeNode,
     allChallengeNode: AllChallengeNode,
     allMarkdownRemark: AllMarkdownRemark
+  }),
+  fetchState: PropTypes.shape({
+    pending: PropTypes.bool,
+    complete: PropTypes.bool,
+    errored: PropTypes.bool
+  }),
+  hash: PropTypes.string,
+  isSignedIn: PropTypes.bool,
+  location: PropTypes.object,
+  state: PropTypes.object,
+  user: PropTypes.shape({
+    name: PropTypes.string
   })
 };
 
-const IndexPage = ({
+const BigCallToAction = isSignedIn => {
+  if (!isSignedIn) {
+    return (
+      <>
+        <Row>
+          <Col sm={10} smOffset={1} xs={12}>
+            <Spacer />
+            <Login>Sign in to save your progress.</Login>
+          </Col>
+        </Row>
+      </>
+    );
+  }
+  return '';
+};
+
+// choose between the state from landing page and hash from url.
+const hashValueSelector = (state, hash) => {
+  if (state && state.superBlock) return dasherize(state.superBlock);
+  else if (hash) return hash.substr(1);
+  else return null;
+};
+
+export const LearnPage = ({
+  fetchState: { pending, complete },
+  location: { hash = '', state = '' },
+  isSignedIn,
+  user: { name = '' },
   data: {
     challengeNode: {
       fields: { slug }
@@ -35,48 +91,44 @@ const IndexPage = ({
     allChallengeNode: { edges },
     allMarkdownRemark: { edges: mdEdges }
   }
-}) => (
-  <LearnLayout>
-    <div className='learn-page-wrapper'>
-      <Helmet title='Welcome to learn.freeCodeCamp!' />
-      <Spacer />
-      <Spacer />
-      <h2>Welcome to the freeCodeCamp curriculum</h2>
-      <p>
-        We have thousands of coding lessons to help you improve your skills.
-      </p>
-      <p>You can earn each certification by completing its 5 final projects.</p>
-      <p>
-        And yes - all of this is 100% free, thanks to the thousands of campers
-        who{' '}
-        <a
-          href='https://donate.freecodecamp.org'
-          rel='noopener noreferrer'
-          target='_blank'
-          >
-          donate
-        </a>{' '}
-        to our nonprofit.
-      </p>
-      <p>
-        If you are new to coding, we recommend you{' '}
-        <Link to={slug}>start at the beginning</Link>.
-      </p>
-      <Spacer />
-      <Map
-        introNodes={mdEdges.map(({ node }) => node)}
-        nodes={edges
-          .map(({ node }) => node)
-          .filter(({ isPrivate }) => !isPrivate)}
-      />
-    </div>
-  </LearnLayout>
-);
+}) => {
+  if (pending && !complete) {
+    return <Loader fullScreen={true} />;
+  }
 
-IndexPage.displayName = 'IndexPage';
-IndexPage.propTypes = propTypes;
+  const hashValue = hashValueSelector(state, hash);
 
-export default connect(mapStateToProps)(IndexPage);
+  return (
+    <LearnLayout>
+      <Helmet title='Learn | freeCodeCamp.org' />
+      <Grid>
+        <Welcome name={name} />
+        <Row className='text-center'>
+          <Col sm={10} smOffset={1} xs={12}>
+            {BigCallToAction(isSignedIn)}
+            <Spacer />
+            <h3>
+              If you are new to coding, we recommend you{' '}
+              <Link to={slug}>start at the beginning</Link>.
+            </h3>
+          </Col>
+        </Row>
+        <Map
+          hash={hashValue}
+          introNodes={mdEdges.map(({ node }) => node)}
+          nodes={edges
+            .map(({ node }) => node)
+            .filter(({ isPrivate }) => !isPrivate)}
+        />
+      </Grid>
+    </LearnLayout>
+  );
+};
+
+LearnPage.displayName = 'LearnPage';
+LearnPage.propTypes = propTypes;
+
+export default connect(mapStateToProps)(LearnPage);
 
 export const query = graphql`
   query FirstChallenge {
@@ -85,9 +137,7 @@ export const query = graphql`
         slug
       }
     }
-    allChallengeNode(
-      sort: { fields: [superOrder, order, challengeOrder] }
-    ) {
+    allChallengeNode(sort: { fields: [superOrder, order, challengeOrder] }) {
       edges {
         node {
           fields {
